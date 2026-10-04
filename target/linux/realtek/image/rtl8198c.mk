@@ -27,3 +27,18 @@ define Device/mercury_gapm-7100
 endef
 
 TARGET_DEVICES += mercury_gapm-7100
+
+
+define Device/gn866_ac
+  LOADADDR := 0x80000000
+  LOADER_PLATFORM := rtl8198c
+  LOADER_TYPE := bin
+  LZMA_TEXT_START := 0x84000000
+  SOC := rtl8198c
+  DEVICE_VENDOR := GN866
+  DEVICE_MODEL := AC
+  IMAGE_SIZE := 16384k
+  KERNEL_INITRAMFS := kernel-bin | append-dtb | lzma | loader-kernel
+endef
+
+TARGET_DEVICES += gn866_ac
