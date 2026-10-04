@@ -1,0 +1,62 @@
+name: GN866 AC OpenWrt build
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'target/linux/realtek/**'
+      - '.github/workflows/gn866-ac-build.yml'
+      - 'package/**'
+      - 'Makefile'
+      - 'include/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    container:
+      image: ubuntu:20.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build tools
+        shell: bash
+        run: |
+          export DEBIAN_FRONTEND=noninteractive
+          dpkg --add-architecture i386
+          apt-get update
+          apt-get install -y             build-essential gcc g++ make gcc-multilib g++-multilib             bison flex gettext git rsync unzip zip xz-utils             bzip2 gzip file cpio patch wget curl             python3 python3-distutils libncurses5-dev             libncurses-dev zlib1g-dev libssl-dev             libc6-i386 lib32z1 libstdc++6:i386 zlib1g:i386
+
+      - name: Configure GN866 AC
+        shell: bash
+        run: |
+          cat > .config <<'EOF'
+          CONFIG_TARGET_realtek=y
+          CONFIG_TARGET_realtek_rtl8198c=y
+          CONFIG_TARGET_realtek_rtl8198c_DEVICE_gn866_ac=y
+          EOF
+          make defconfig
+
+      - name: Build GN866 AC
+        shell: bash
+        run: |
+          make -j2 V=s
+
+      - name: Collect GN866 firmware
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          find bin/targets/realtek/rtl8198c -maxdepth 1 -type f -exec cp -v {} artifacts/ \; 2>/dev/null || true
+          printf '%s\n'             'GN866 AC target added to OpenWrt RTL8198C.'             'Flash size taken from the supplied GN866 dump: 16 MiB.'             'GN866 RTL8192ER/RTL8812BRH vendor wireless support is not supplied by this OpenWrt tree.'             'The device-tree RAM declaration is 128 MiB and should be board-verified.'             > artifacts/README-GN866.txt
+          ls -lh artifacts || true
+
+      - name: Upload GN866 firmware
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: GN866-AC-openwrt
+          path: artifacts/
+          if-no-files-found: warn
