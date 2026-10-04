@@ -65,6 +65,15 @@ define Build/h3c-vfs
 	mv $@.new $@
 endef
 
+define Build/realtek-cr6c
+	$(STAGING_DIR_HOST)/bin/python3 $(TOPDIR)/scripts/realtek-cr6c.py \
+		$@.new "$(KDIR)/gn866_ac-kernel.bin" "$(KDIR)/root.squashfs" \
+		--kernel-ram 0x80000000 \
+		--kernel-flash 0x00030000 \
+		--rootfs-flash 0x00260000
+	mv $@.new $@
+endef
+
 define Build/loader-common
         rm -rf $@.src
         $(MAKE) -C lzma-loader \
