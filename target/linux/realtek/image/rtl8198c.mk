@@ -39,7 +39,6 @@ define Device/gn866_ac
   DEVICE_MODEL := AC
   IMAGE_SIZE := 16384k
   KERNEL := kernel-bin | append-dtb | lzma | loader-kernel
-  KERNEL_INITRAMFS := $(KERNEL)
   IMAGES += factory.bin
   IMAGE/factory.bin := realtek-cr6c
 endef
