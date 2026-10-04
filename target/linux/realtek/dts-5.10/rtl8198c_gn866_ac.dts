@@ -1,0 +1,16 @@
+// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
+
+#include "rtl8198c.dtsi"
+
+/ {
+	compatible = "gn866,ac", "realtek,rtl8198c-soc";
+	model = "GN866 AC";
+
+	// GN866 dump-specific flash is 16 MiB. The RAM size below is the
+	// common 128 MiB configuration for this RTL8198C board family and
+	// should be verified against the board if a boot test is performed.
+	memory@0 {
+		device_type = "memory";
+		reg = <0x0 0x8000000>;
+	};
+};
