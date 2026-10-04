@@ -38,6 +38,7 @@ define Device/gn866_ac
   DEVICE_VENDOR := GN866
   DEVICE_MODEL := AC
   IMAGE_SIZE := 16384k
+  KERNEL := kernel-bin | append-dtb | lzma | loader-kernel
   KERNEL_INITRAMFS := kernel-bin | append-dtb | lzma | loader-kernel
 endef
 
