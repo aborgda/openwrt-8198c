@@ -52,6 +52,32 @@ jobs:
         run: |
           make -j2 V=s
 
+
+      - name: Verify GN866 CR6C image
+        shell: bash
+        run: |
+          IMAGE="$(find bin/targets/realtek/rtl8198c -maxdepth 1 -type f -name '*factory.bin' -print -quit)"
+          test -n "$IMAGE"
+          python3 - "$IMAGE" <<'PY'
+          import struct, sys
+          p = sys.argv[1]
+          data = open(p, "rb").read()
+          assert data[:4] == b"cr6c", data[:4]
+          off = 0
+          sigs = []
+          while off < len(data):
+              sig, ram, flash, length = struct.unpack_from(">4sIII", data, off)
+              off += 16
+              payload = data[off:off + length]
+              assert len(payload) == length
+              assert sig in (b"cr6c", b"r6cr"), sig
+              assert sum(struct.unpack_from(">H", payload, n)[0] for n in range(0, len(payload), 2)) & 0xffff == 0
+              sigs.append(sig.decode())
+              off += length
+          assert sigs == ["cr6c", "r6cr"], sigs
+          print("CR6C/R6CR verified:", p, "bytes:", len(data))
+          PY
+
       - name: Collect GN866 firmware
         if: always()
         shell: bash
