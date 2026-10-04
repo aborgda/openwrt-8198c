@@ -4,6 +4,7 @@ import struct
 from pathlib import Path
 
 HEADER = struct.Struct(">4sIII")
+SQUASHFS_MAGIC = b"hsqs"
 
 
 def checksum16(data: bytes) -> bytes:
@@ -24,15 +25,19 @@ def block(signature: bytes, ram: int, flash: int, payload: bytes) -> bytes:
 def main() -> None:
     ap = argparse.ArgumentParser(description="Create Realtek CR6C/R6CR update image")
     ap.add_argument("output")
-    ap.add_argument("kernel")
-    ap.add_argument("rootfs")
+    ap.add_argument("combined")
     ap.add_argument("--kernel-ram", type=lambda x: int(x, 0), default=0x80000000)
     ap.add_argument("--kernel-flash", type=lambda x: int(x, 0), default=0x00030000)
     ap.add_argument("--rootfs-flash", type=lambda x: int(x, 0), default=0x00260000)
     args = ap.parse_args()
 
-    kernel = Path(args.kernel).read_bytes()
-    rootfs = Path(args.rootfs).read_bytes()
+    combined = Path(args.combined).read_bytes()
+    root_pos = combined.find(SQUASHFS_MAGIC)
+    if root_pos < 0:
+        raise SystemExit("SquashFS rootfs magic not found in kernel+rootfs image")
+
+    kernel = combined[:root_pos]
+    rootfs = combined[root_pos:]
 
     image = (
         block(b"cr6c", args.kernel_ram, args.kernel_flash, kernel)
@@ -40,25 +45,24 @@ def main() -> None:
     )
     Path(args.output).write_bytes(image)
 
-    if image[:4] != b"cr6c":
-        raise SystemExit("CR6C header verification failed")
-
     pos = 0
+    sigs = []
     while pos < len(image):
         sig, ram, flash, length = HEADER.unpack_from(image, pos)
         pos += HEADER.size
-        data = image[pos:pos + length]
-        if len(data) != length:
+        payload = image[pos:pos + length]
+        if len(payload) != length:
             raise SystemExit("truncated Realtek image block")
         if sig not in (b"cr6c", b"r6cr"):
-            raise SystemExit(f"unexpected Realtek signature: {sig!r}")
-        total = sum(
-            struct.unpack_from(">H", data, off)[0]
-            for off in range(0, len(data), 2)
-        ) & 0xFFFF
-        if total != 0:
+            raise SystemExit(f"unexpected signature {sig!r}")
+        if sum(struct.unpack_from(">H", payload, n)[0]
+               for n in range(0, len(payload), 2)) & 0xFFFF:
             raise SystemExit(f"checksum failed for {sig.decode()}")
+        sigs.append(sig)
         pos += length
+
+    if sigs != [b"cr6c", b"r6cr"]:
+        raise SystemExit(f"unexpected block order: {sigs!r}")
 
 
 if __name__ == "__main__":
