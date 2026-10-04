@@ -41,7 +41,7 @@ define Device/gn866_ac
   KERNEL := kernel-bin | append-dtb | lzma | loader-kernel
   KERNEL_INITRAMFS := kernel-bin | append-dtb | lzma | loader-kernel
   IMAGES += factory.bin
-  IMAGE/factory.bin := realtek-cr6c
+  IMAGE/factory.bin := append-kernel | append-rootfs | realtek-cr6c
 endef
 
 TARGET_DEVICES += gn866_ac
