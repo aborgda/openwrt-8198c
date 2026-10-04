@@ -27,7 +27,13 @@ jobs:
           export DEBIAN_FRONTEND=noninteractive
           dpkg --add-architecture i386
           apt-get update
-          apt-get install -y             build-essential gcc g++ make gcc-multilib g++-multilib             bison flex gettext git rsync unzip zip xz-utils             bzip2 gzip file cpio patch wget curl             python3 python3-distutils libncurses5-dev             libncurses-dev zlib1g-dev libssl-dev             libc6-i386 lib32z1 libstdc++6:i386 zlib1g:i386
+          apt-get install -y \
+            build-essential gcc g++ make gcc-multilib g++-multilib \
+            bison flex gettext git rsync unzip zip xz-utils \
+            bzip2 gzip file cpio patch wget curl \
+            python3 python3-distutils libncurses5-dev \
+            libncurses-dev zlib1g-dev libssl-dev \
+            libc6-i386 lib32z1 libstdc++6:i386 zlib1g:i386
 
       - name: Configure GN866 AC
         shell: bash
@@ -50,7 +56,17 @@ jobs:
         run: |
           mkdir -p artifacts
           find bin/targets/realtek/rtl8198c -maxdepth 1 -type f -exec cp -v {} artifacts/ \; 2>/dev/null || true
-          printf '%s\n'             'GN866 AC target added to OpenWrt RTL8198C.'             'Flash size taken from the supplied GN866 dump: 16 MiB.'             'GN866 RTL8192ER/RTL8812BRH vendor wireless support is not supplied by this OpenWrt tree.'             'The device-tree RAM declaration is 128 MiB and should be board-verified.'             > artifacts/README-GN866.txt
+          if find artifacts -maxdepth 1 -type f | grep -qv 'README-GN866.txt'; then
+            echo 'BUILD_RESULT=HAS_OUTPUT' > artifacts/BUILD-STATUS.txt
+          else
+            echo 'BUILD_RESULT=NO_OUTPUT' > artifacts/BUILD-STATUS.txt
+          fi
+          printf '%s\n' \
+            'GN866 AC target added to OpenWrt RTL8198C.' \
+            'Flash size taken from the supplied GN866 dump: 16 MiB.' \
+            'GN866 RTL8192ER/RTL8812BRH vendor wireless support is not supplied by this OpenWrt tree.' \
+            'The device-tree RAM declaration is 128 MiB and should be board-verified.' \
+            > artifacts/README-GN866.txt
           ls -lh artifacts || true
 
       - name: Upload GN866 firmware
