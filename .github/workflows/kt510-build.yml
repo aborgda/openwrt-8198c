@@ -13,10 +13,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Prepare legacy SDK
+      - name: Install legacy build dependencies
         run: |
+          sudo dpkg --add-architecture i386
           sudo apt-get update
-          sudo apt-get install -y git make gcc g++ python3 file cpio xz-utils libncurses-dev
+          sudo apt-get install -y             git make gcc g++ python3 file cpio xz-utils             libncurses-dev libncurses5-dev             gcc-multilib libc6-dev-i386             libc6:i386 lib32gcc-s1 lib32stdc++6 zlib1g:i386
+
+      - name: Prepare KT510 RTL8198 SDK
+        run: |
           chmod +x targets/kt510/build-kt510.sh
           targets/kt510/build-kt510.sh
 
@@ -25,18 +29,38 @@ jobs:
           test -f sdk/boards/rtl8198/Makefile
           test -f sdk/boards/rtl8198/config.in
           test -f sdk/boards/rtl8198/config.linux-2.6.30.RTL8198_SPI_SQUASHFS
+          test -d sdk/toolchain/rsdk-1.5.5-5281-EB-2.6.30-0.9.30.3-110714
           grep -q 'CONFIG_RTL_8198=y' sdk/boards/rtl8198/config.linux-2.6.30.RTL8198_SPI_SQUASHFS || true
 
-      - name: KT510 manifest
+      - name: Build KT510
+        id: build
+        continue-on-error: true
+        run: |
+          cd sdk
+          set -o pipefail
+          make -j2 V=s 2>&1 | tee ../kt510-build.log
+
+      - name: Collect KT510 result
+        if: always()
         run: |
           mkdir -p artifacts
           cp targets/kt510/rtl8198-kt510.config artifacts/
           cp targets/kt510/README.md artifacts/
           cp targets/kt510/build-kt510.sh artifacts/
-          printf '%s\n'             'KT510 build preparation completed.'             'RTL8198 + RTL8192ER + RTL8812AR'             '16 MiB flash'             'GPIO/partition/header values intentionally not guessed.'             > artifacts/BUILD-STATUS.txt
+          test ! -e kt510-build.log || cp kt510-build.log artifacts/
+          if test -f sdk/image/fw.bin; then
+            cp sdk/image/fw.bin artifacts/KT510-RTL8198-fw.bin
+            echo "BUILD_RESULT=SUCCESS" > artifacts/BUILD-STATUS.txt
+          else
+            echo "BUILD_RESULT=NO_FW_BIN" > artifacts/BUILD-STATUS.txt
+          fi
+          echo "TARGET=RTL8198+RTL8192ER+RTL8812AR" >> artifacts/BUILD-STATUS.txt
+          echo "FLASH=16MiB" >> artifacts/BUILD-STATUS.txt
+          echo "GPIO/partition/header values are not guessed from unrelated boards." >> artifacts/BUILD-STATUS.txt
 
-      - name: Upload KT510 preparation
+      - name: Upload KT510 build artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: KT510-RTL8198-prep
+          name: KT510-RTL8198
           path: artifacts/
