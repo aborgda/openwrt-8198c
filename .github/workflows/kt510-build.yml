@@ -1,0 +1,42 @@
+name: KT510 RTL8198 build check
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "targets/kt510/**"
+      - ".github/workflows/kt510-build.yml"
+
+jobs:
+  kt510:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare legacy SDK
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git make gcc g++ python3 file cpio xz-utils libncurses-dev
+          chmod +x targets/kt510/build-kt510.sh
+          targets/kt510/build-kt510.sh
+
+      - name: Verify RTL8198 board sources
+        run: |
+          test -f sdk/boards/rtl8198/Makefile
+          test -f sdk/boards/rtl8198/config.in
+          test -f sdk/boards/rtl8198/config.linux-2.6.30.RTL8198_SPI_SQUASHFS
+          grep -q 'CONFIG_RTL_8198=y' sdk/boards/rtl8198/config.linux-2.6.30.RTL8198_SPI_SQUASHFS || true
+
+      - name: KT510 manifest
+        run: |
+          mkdir -p artifacts
+          cp targets/kt510/rtl8198-kt510.config artifacts/
+          cp targets/kt510/README.md artifacts/
+          cp targets/kt510/build-kt510.sh artifacts/
+          printf '%s\n'             'KT510 build preparation completed.'             'RTL8198 + RTL8192ER + RTL8812AR'             '16 MiB flash'             'GPIO/partition/header values intentionally not guessed.'             > artifacts/BUILD-STATUS.txt
+
+      - name: Upload KT510 preparation
+        uses: actions/upload-artifact@v4
+        with:
+          name: KT510-RTL8198-prep
+          path: artifacts/
