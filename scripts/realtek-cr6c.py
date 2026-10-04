@@ -30,6 +30,7 @@ def main() -> None:
     ap.add_argument("--kernel-ram", type=lambda x: int(x, 0), default=0x80000000)
     ap.add_argument("--kernel-flash", type=lambda x: int(x, 0), default=0x00030000)
     ap.add_argument("--rootfs-flash", type=lambda x: int(x, 0), default=0x00260000)
+    ap.add_argument("--kernel-span", type=lambda x: int(x, 0), default=0x00230000)
     args = ap.parse_args()
 
     if args.rootfs:
@@ -43,8 +44,11 @@ def main() -> None:
         kernel = combined[:root_pos]
         rootfs = combined[root_pos:]
 
+    if args.kernel_span < len(kernel):
+        raise SystemExit(f"kernel {len(kernel):#x} exceeds span {args.kernel_span:#x}")
+    kernel_payload = kernel + b"\\xff" * (args.kernel_span - len(kernel))
     image = (
-        block(b"cr6c", args.kernel_ram, args.kernel_flash, kernel)
+        block(b"cr6c", args.kernel_ram, args.kernel_flash, kernel_payload)
         + block(b"r6cr", 0, args.rootfs_flash, rootfs)
     )
     Path(args.output).write_bytes(image)
