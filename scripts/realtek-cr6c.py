@@ -25,19 +25,23 @@ def block(signature: bytes, ram: int, flash: int, payload: bytes) -> bytes:
 def main() -> None:
     ap = argparse.ArgumentParser(description="Create Realtek CR6C/R6CR update image")
     ap.add_argument("output")
-    ap.add_argument("combined")
+    ap.add_argument("kernel")
+    ap.add_argument("rootfs", nargs="?")
     ap.add_argument("--kernel-ram", type=lambda x: int(x, 0), default=0x80000000)
     ap.add_argument("--kernel-flash", type=lambda x: int(x, 0), default=0x00030000)
     ap.add_argument("--rootfs-flash", type=lambda x: int(x, 0), default=0x00260000)
     args = ap.parse_args()
 
-    combined = Path(args.combined).read_bytes()
-    root_pos = combined.find(SQUASHFS_MAGIC)
-    if root_pos < 0:
-        raise SystemExit("SquashFS rootfs magic not found in kernel+rootfs image")
-
-    kernel = combined[:root_pos]
-    rootfs = combined[root_pos:]
+    if args.rootfs:
+        kernel = Path(args.kernel).read_bytes()
+        rootfs = Path(args.rootfs).read_bytes()
+    else:
+        combined = Path(args.kernel).read_bytes()
+        root_pos = combined.find(SQUASHFS_MAGIC)
+        if root_pos < 0:
+            raise SystemExit("SquashFS rootfs magic not found in combined kernel/rootfs image")
+        kernel = combined[:root_pos]
+        rootfs = combined[root_pos:]
 
     image = (
         block(b"cr6c", args.kernel_ram, args.kernel_flash, kernel)
