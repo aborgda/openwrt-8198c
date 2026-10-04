@@ -9,6 +9,7 @@ on:
       - 'package/**'
       - 'Makefile'
       - 'include/**'
+      - 'scripts/realtek-cr6c.py'
   workflow_dispatch:
 
 jobs:
