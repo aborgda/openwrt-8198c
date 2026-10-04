@@ -53,42 +53,7 @@ jobs:
         run: |
           make -j4 V=s
 
-
       - name: Build GN866 CR6C factory image
-        shell: bash
-        run: |
-          KERNEL="build_dir/target-mips_24kc_musl/linux-realtek_rtl8198c/gn866_ac-kernel.bin"
-          ROOTFS="build_dir/target-mips_24kc_musl/linux-realtek_rtl8198c/root.squashfs"
-          test -f "$KERNEL"
-          test -f "$ROOTFS"
-          mkdir -p artifacts
-          python3 scripts/realtek-cr6c.py artifacts/GN866-AC-cr6c-factory.bin "$KERNEL" "$ROOTFS"             --kernel-ram 0x80000000             --kernel-flash 0x00030000             --rootfs-flash 0x00260000
-      - name: Collect GN866 firmware
-        if: always()
-        shell: bash
-        run: |
-          mkdir -p artifacts
-          find bin/targets/realtek/rtl8198c -maxdepth 1 -type f -exec cp -v {} artifacts/ \; 2>/dev/null || true
-          if find artifacts -maxdepth 1 -type f | grep -qv 'README-GN866.txt'; then
-            echo 'BUILD_RESULT=HAS_OUTPUT' > artifacts/BUILD-STATUS.txt
-          else
-            echo 'BUILD_RESULT=NO_OUTPUT' > artifacts/BUILD-STATUS.txt
-          fi
-          printf '%s\n' \
-            'GN866 AC target added to OpenWrt RTL8198C.' \
-            'Flash size taken from the supplied GN866 dump: 16 MiB.' \
-            'GN866 RTL8192ER/RTL8812BRH vendor wireless support is not supplied by this OpenWrt tree.' \
-            'The device-tree RAM declaration is 128 MiB and should be board-verified.' \
-            > artifacts/README-GN866.txt
-          ls -lh artifacts || true
-
-      - name: Upload GN866 firmware
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: GN866-AC-openwrt
-          path: artifacts/
-          if-no-files-found: warn      - name: Build GN866 CR6C factory image
         shell: bash
         run: |
           mkdir -p artifacts
@@ -96,17 +61,27 @@ jobs:
           ROOTFS="$(find build_dir/target-*/linux-realtek_rtl8198c -maxdepth 1 -type f -name 'root.squashfs' -print -quit)"
           test -n "$KERNEL"
           test -n "$ROOTFS"
-          python3 scripts/realtek-cr6c.py             artifacts/GN866-AC-CR6C-factory.bin             "$KERNEL"             "$ROOTFS"             --kernel-ram 0x80000000             --kernel-flash 0x00030000             --rootfs-flash 0x00260000             --kernel-span 0x00230000
+          python3 scripts/realtek-cr6c.py \
+            artifacts/GN866-AC-CR6C-factory.bin \
+            "$KERNEL" \
+            "$ROOTFS" \
+            --kernel-ram 0x80000000 \
+            --kernel-flash 0x00030000 \
+            --rootfs-flash 0x00260000 \
+            --kernel-span 0x00230000
 
       - name: Verify GN866 CR6C image
         shell: bash
         run: |
           test -f artifacts/GN866-AC-CR6C-factory.bin
           python3 - "artifacts/GN866-AC-CR6C-factory.bin" <<'PY'
-          import struct, sys
-          p = sys.argv[1]
-          data = open(p, "rb").read()
+          import struct
+          import sys
+
+          path = sys.argv[1]
+          data = open(path, "rb").read()
           assert data[:4] == b"cr6c", data[:4]
+
           off = 0
           sigs = []
           while off < len(data):
@@ -115,11 +90,15 @@ jobs:
               payload = data[off:off + length]
               assert len(payload) == length
               assert sig in (b"cr6c", b"r6cr"), sig
-              assert sum(struct.unpack_from(">H", payload, n)[0] for n in range(0, len(payload), 2)) & 0xffff == 0
+              assert sum(
+                  struct.unpack_from(">H", payload, n)[0]
+                  for n in range(0, len(payload), 2)
+              ) & 0xffff == 0
               sigs.append((sig.decode(), hex(ram), hex(flash), length))
               off += length
+
           assert [x[0] for x in sigs] == ["cr6c", "r6cr"], sigs
-          print("CR6C/R6CR verified:", p, "bytes:", len(data), sigs)
+          print("CR6C/R6CR verified:", path, "bytes:", len(data), sigs)
           PY
 
       - name: Collect GN866 firmware
@@ -134,10 +113,10 @@ jobs:
             echo 'BUILD_RESULT=NO_OUTPUT' > artifacts/BUILD-STATUS.txt
           fi
           printf '%s\n' \
-            'GN866 AC target added to OpenWrt RTL8198C.' \
-            'Flash size taken from the supplied GN866 dump: 16 MiB.' \
-            'GN866 RTL8192ER/RTL8812BRH vendor wireless support is not supplied by this OpenWrt tree.' \
-            'The device-tree RAM declaration is 128 MiB and should be board-verified.' \
+            'GN866 AC target: RTL8198C + RTL8192ER + RTL8812BRH.' \
+            'CR6C kernel flash address: 0x00030000.' \
+            'CR6C rootfs flash address: 0x00260000.' \
+            'Kernel span: 0x00230000.' \
             > artifacts/README-GN866.txt
           ls -lh artifacts || true
 
