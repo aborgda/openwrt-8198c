@@ -370,7 +370,7 @@ define Build/lzma
 endef
 
 define Build/lzma-no-dict
-	$(STAGING_DIR_HOST)/bin/lzma e $@ $(1) $@.new
+	$(STAGING_DIR_HOST)/bin/lzma e $@ $@.new $(1)
 	@mv $@.new $@
 endef
 
