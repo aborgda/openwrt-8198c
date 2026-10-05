@@ -366,7 +366,7 @@ define Build/linksys-image
 endef
 
 define Build/lzma
-	$(call Build/lzma-no-dict,-lc1 -lp2 -pb2 $(1))
+	$(call Build/lzma-no-dict,-9 -e -lc1 -lp2 -pb2 $(1))
 endef
 
 define Build/lzma-no-dict
