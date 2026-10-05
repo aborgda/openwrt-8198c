@@ -1,0 +1,17 @@
+#!/bin/sh
+
+# GN866 AC: keep WLAN enabled and bring interfaces up at boot.
+if [ -x /sbin/uci ]; then
+	for radio in /etc/config/wireless; do
+		[ -f "$radio" ] || continue
+		u=$(uci show wireless 2>/dev/null | sed -n 's/^wireless\.\(@wifi-device\[[0-9][0-9]*\]\)\.disabled=.*/\1/p' | sort -u)
+		for dev in $u; do
+			uci set "wireless.${dev#wireless.}.disabled=0" 2>/dev/null || true
+		done
+		uci commit wireless 2>/dev/null || true
+		break
+	done
+fi
+
+[ -x /sbin/wifi ] && /sbin/wifi up >/dev/null 2>&1 || true
+exit 0
