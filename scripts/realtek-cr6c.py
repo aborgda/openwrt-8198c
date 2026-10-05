@@ -46,7 +46,7 @@ def main() -> None:
 
     if args.kernel_span < len(kernel):
         raise SystemExit(f"kernel {len(kernel):#x} exceeds span {args.kernel_span:#x}")
-    kernel_payload = kernel + b"\\xff" * (args.kernel_span - len(kernel))
+    kernel_payload = kernel + b"\xff" * (args.kernel_span - len(kernel))
     image = (
         block(b"cr6c", args.kernel_ram, args.kernel_flash, kernel_payload)
         + block(b"r6cr", 0, args.rootfs_flash, rootfs)
