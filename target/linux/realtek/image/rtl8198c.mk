@@ -40,6 +40,8 @@ define Device/gn866_ac
   IMAGE_SIZE := 16384k
   KERNEL := kernel-bin | append-dtb | lzma | loader-kernel
   KERNEL_INITRAMFS := kernel-bin | append-dtb | lzma | loader-kernel
+  ARTIFACTS += factory.bin
+  ARTIFACT/factory.bin := realtek-cr6c
 endef
 
 TARGET_DEVICES += gn866_ac
