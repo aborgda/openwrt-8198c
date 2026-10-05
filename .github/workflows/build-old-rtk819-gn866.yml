@@ -23,6 +23,8 @@ jobs:
             xz-utils bzip2 gzip file cpio patch wget curl gawk python3 \
             libncurses5-dev libncurses-dev zlib1g-dev libssl-dev \
             autoconf automake libtool texinfo bc libelf-dev ca-certificates
+          ln -sf /usr/bin/python3 /usr/local/bin/python
+          python --version
 
       - name: Download old RTK819 SDK source
         shell: bash
