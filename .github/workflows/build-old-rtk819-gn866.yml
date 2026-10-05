@@ -22,7 +22,7 @@ jobs:
             build-essential gcc g++ make bison flex gettext git rsync unzip zip \
             xz-utils bzip2 gzip file cpio patch wget curl gawk python3 \
             libncurses5-dev libncurses-dev zlib1g-dev libssl-dev \
-            autoconf automake libtool texinfo bc libelf-dev ca-certificates
+            autoconf automake libtool texinfo bc libelf-dev subversion ca-certificates
           ln -sf /usr/bin/python3 /usr/local/bin/python
           python --version
 
@@ -61,7 +61,7 @@ jobs:
             -e 's/^CONFIG_GCC_VERSION="4.6-linaro"/CONFIG_GCC_VERSION="4.8-linaro"/' \
             -e 's/^CONFIG_GDB=y/# CONFIG_GDB is not set/' \
             .config
-          make defconfig
+          make FORCE=1 defconfig
 
           # GN866 AC vendor wireless: patch the RTL8198C kernel config,
           # not the top-level OpenWrt config.
@@ -95,7 +95,7 @@ jobs:
           FORCE_UNSAFE_CONFIGURE: "1"
         run: |
           set -o pipefail
-          make -j2 V=s 2>&1 | tee build.log
+          FORCE=1 make -j2 V=s 2>&1 | tee build.log
 
       - name: Validate and collect firmware
         if: always()
