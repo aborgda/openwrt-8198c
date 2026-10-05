@@ -26,14 +26,14 @@ jobs:
           ln -sf /usr/bin/python3 /usr/local/bin/python
           python --version
 
-      - name: Download old RTK819 SDK source
+      - name: Download clean RTK819 SDK source
         shell: bash
         run: |
           set -e
           rm -rf /tmp/rtk819-src
           mkdir -p /tmp/rtk819-src
           wget -q -O /tmp/rtk819.tar.gz \
-            https://github.com/aborgda/openwrt-rtk819/archive/refs/heads/main.tar.gz
+            https://github.com/aborgda/openwrt-rtk819/archive/refs/heads/gn866-clean-source.tar.gz
           tar -xzf /tmp/rtk819.tar.gz --strip-components=1 -C /tmp/rtk819-src
           rsync -a --delete /tmp/rtk819-src/ "${GITHUB_WORKSPACE}/"
           test -f rtk_deconfig/defconfig_rtl8198c
