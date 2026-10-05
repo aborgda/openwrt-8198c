@@ -79,6 +79,16 @@ jobs:
           echo '--- GN866 kernel wireless ---'
           grep -E 'CONFIG_SLOT_[01]_(8192EE|8812|8814AE)|CONFIG_WLAN_HAL' "$KCFG" || true
 
+      - name: Patch legacy findutils host helper
+        shell: bash
+        run: |
+          set -e
+          make tools/findutils/download tools/findutils/prepare V=s
+          F=build_dir/host/findutils-4.4.2/gnulib/lib/freadahead.c
+          test -f "$F"
+          sed -i 's@#error "Please port gnulib freadahead.c to your platform! Look at the definition of fflush, fread on your system, then report this to bug-gnulib."@return 0;@' "$F"
+          grep -n -A3 -B3 'return 0;' "$F" | tail -12
+
       - name: Build RTL8198C image
         shell: bash
         env:
