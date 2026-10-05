@@ -13,13 +13,6 @@ jobs:
       image: ubuntu:20.04
 
     steps:
-      - name: Checkout old RTK819 SDK
-        uses: actions/checkout@v4
-        with:
-          repository: aborgda/openwrt-rtk819
-          ref: main
-          fetch-depth: 1
-
       - name: Install build tools
         shell: bash
         run: |
@@ -31,10 +24,24 @@ jobs:
             libncurses5-dev libncurses-dev zlib1g-dev libssl-dev \
             autoconf automake libtool texinfo bc libelf-dev ca-certificates
 
+      - name: Download old RTK819 SDK source
+        shell: bash
+        run: |
+          set -e
+          rm -rf /tmp/rtk819-src
+          mkdir -p /tmp/rtk819-src
+          wget -q -O /tmp/rtk819.tar.gz \
+            https://github.com/aborgda/openwrt-rtk819/archive/refs/heads/main.tar.gz
+          tar -xzf /tmp/rtk819.tar.gz --strip-components=1 -C /tmp/rtk819-src
+          rsync -a --delete /tmp/rtk819-src/ "${GITHUB_WORKSPACE}/"
+          test -f rtk_deconfig/defconfig_rtl8198c
+          test -f target/linux/rtkmips/image/Makefile
+
       - name: Restore missing uClibc source
         shell: bash
         run: |
           set -e
+          mkdir -p dl
           wget -O dl/uClibc-0.9.33.2.tar.bz2 \
             https://mirror2.openwrt.org/sources/uClibc-0.9.33.2.tar.bz2
           test -s dl/uClibc-0.9.33.2.tar.bz2
@@ -45,15 +52,12 @@ jobs:
         run: |
           set -e
           cp rtk_deconfig/defconfig_rtl8198c .config
-
-          # The SDK includes GCC 4.8 Linaro, while the old defconfig asks for 4.6.
           sed -i \
             -e 's/^CONFIG_GCC_VERSION_4_6_LINARO=y/# CONFIG_GCC_VERSION_4_6_LINARO is not set/' \
             -e 's/^CONFIG_GCC_VERSION_4_6=y/# CONFIG_GCC_VERSION_4_6 is not set/' \
             -e 's/^CONFIG_GCC_VERSION="4.6-linaro"/CONFIG_GCC_VERSION="4.8-linaro"/' \
             -e 's/^CONFIG_GDB=y/# CONFIG_GDB is not set/' \
             .config
-
           cat >> .config <<'EOF'
           CONFIG_GCC_VERSION_4_8_LINARO=y
           CONFIG_GCC_VERSION_4_8=y
@@ -67,11 +71,8 @@ jobs:
           CONFIG_WLAN_HAL_88XX=y
           # CONFIG_WLAN_HAL_8814AE is not set
           EOF
-
           make defconfig
-          echo '--- target ---'
           grep -E 'CONFIG_TARGET_rtkmips|CONFIG_CPU_TYPE|CONFIG_GCC_VERSION|CONFIG_UCLIBC_VERSION' .config
-          echo '--- wireless ---'
           grep -E 'CONFIG_SLOT_[01]_(8192EE|8812|8814AE)|CONFIG_WLAN_HAL' .config
 
       - name: Build RTL8198C image
@@ -90,43 +91,35 @@ jobs:
           mkdir -p artifacts
           find bin/targets -maxdepth 4 -type f -print -exec cp -v {} artifacts/ \; 2>/dev/null || true
           find bin -maxdepth 4 -type f -name '*fw*.bin' -print -exec cp -v {} artifacts/ \; 2>/dev/null || true
-
           for f in artifacts/*-AP-fw.bin; do
             [ -f "$f" ] || continue
             cp "$f" artifacts/GN866-AC-RTL8198C-fw.bin
           done
-
           python3 - <<'PY'
           from pathlib import Path
+          import struct
           for p in sorted(Path("artifacts").glob("*.bin")):
               b = p.read_bytes()
               print(p.name, len(b), b[:16].hex())
               if b.startswith(b"cr6c"):
                   off = b.find(b"r6cr", 16)
-                  print("  CR6C header: yes, r6cr:", hex(off) if off >= 0 else "missing")
+                  print("CR6C", off)
                   if off >= 0 and off + 16 <= len(b):
-                      import struct
                       stored = struct.unpack(">I", b[off+12:off+16])[0]
                       actual = len(b) - (off + 16)
-                      print("  r6cr.length =", hex(stored), "actual =", hex(actual))
-                      print("  length_ok =", stored == actual)
+                      print("r6cr.length", hex(stored), "actual", hex(actual), "ok", stored == actual)
                   break
           PY
-
           {
             echo "GN866 AC build from aborgda/openwrt-rtk819 old RTL8198C SDK"
             echo "SoC: RTL8198C"
             echo "Wireless: RTL8192EE + RTL8812"
             echo "Image profile: native AP"
-            echo "GPIO: not modified because GN866 GPIO values were not confirmed from the dump"
-            echo "uClibc: 0.9.33.2"
-            echo "GCC: 4.8 Linaro"
+            echo "GPIO: not modified; GN866 GPIO values not confirmed"
           } > artifacts/README-GN866.txt
-
           sha256sum artifacts/*.bin > artifacts/sha256sums.txt 2>/dev/null || true
           cp .config artifacts/config.buildinfo
           cp build.log artifacts/build.log
-
           if find artifacts -maxdepth 1 -type f -name '*.bin' | grep -q .; then
             echo 'BUILD_RESULT=HAS_OUTPUT' > artifacts/BUILD-STATUS.txt
           else
