@@ -1,0 +1,143 @@
+name: Build GN866 AC from old RTK8198C SDK
+
+on:
+  push:
+    branches:
+      - build-old-rtk819-gn866
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    container:
+      image: ubuntu:20.04
+
+    steps:
+      - name: Checkout old RTK819 SDK
+        uses: actions/checkout@v4
+        with:
+          repository: aborgda/openwrt-rtk819
+          ref: main
+          fetch-depth: 1
+
+      - name: Install build tools
+        shell: bash
+        run: |
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            build-essential gcc g++ make bison flex gettext git rsync unzip zip \
+            xz-utils bzip2 gzip file cpio patch wget curl gawk python3 \
+            libncurses5-dev libncurses-dev zlib1g-dev libssl-dev \
+            autoconf automake libtool texinfo bc libelf-dev ca-certificates
+
+      - name: Restore missing uClibc source
+        shell: bash
+        run: |
+          set -e
+          wget -O dl/uClibc-0.9.33.2.tar.bz2 \
+            https://mirror2.openwrt.org/sources/uClibc-0.9.33.2.tar.bz2
+          test -s dl/uClibc-0.9.33.2.tar.bz2
+          sha256sum dl/uClibc-0.9.33.2.tar.bz2
+
+      - name: Configure GN866 AC
+        shell: bash
+        run: |
+          set -e
+          cp rtk_deconfig/defconfig_rtl8198c .config
+
+          # The SDK includes GCC 4.8 Linaro, while the old defconfig asks for 4.6.
+          sed -i \
+            -e 's/^CONFIG_GCC_VERSION_4_6_LINARO=y/# CONFIG_GCC_VERSION_4_6_LINARO is not set/' \
+            -e 's/^CONFIG_GCC_VERSION_4_6=y/# CONFIG_GCC_VERSION_4_6 is not set/' \
+            -e 's/^CONFIG_GCC_VERSION="4.6-linaro"/CONFIG_GCC_VERSION="4.8-linaro"/' \
+            -e 's/^CONFIG_GDB=y/# CONFIG_GDB is not set/' \
+            .config
+
+          cat >> .config <<'EOF'
+          CONFIG_GCC_VERSION_4_8_LINARO=y
+          CONFIG_GCC_VERSION_4_8=y
+          CONFIG_SLOT_0_8192EE=y
+          # CONFIG_SLOT_0_8194AE is not set
+          CONFIG_SLOT_1_8812=y
+          # CONFIG_SLOT_1_8814AE is not set
+          CONFIG_USE_PCIE_SLOT_0=y
+          CONFIG_USE_PCIE_SLOT_1=y
+          CONFIG_WLAN_HAL=y
+          CONFIG_WLAN_HAL_88XX=y
+          # CONFIG_WLAN_HAL_8814AE is not set
+          EOF
+
+          make defconfig
+          echo '--- target ---'
+          grep -E 'CONFIG_TARGET_rtkmips|CONFIG_CPU_TYPE|CONFIG_GCC_VERSION|CONFIG_UCLIBC_VERSION' .config
+          echo '--- wireless ---'
+          grep -E 'CONFIG_SLOT_[01]_(8192EE|8812|8814AE)|CONFIG_WLAN_HAL' .config
+
+      - name: Build RTL8198C image
+        shell: bash
+        env:
+          FORCE_UNSAFE_CONFIGURE: "1"
+        run: |
+          set -o pipefail
+          make -j2 V=s 2>&1 | tee build.log
+
+      - name: Validate and collect firmware
+        if: always()
+        shell: bash
+        run: |
+          set -e
+          mkdir -p artifacts
+          find bin/targets -maxdepth 4 -type f -print -exec cp -v {} artifacts/ \; 2>/dev/null || true
+          find bin -maxdepth 4 -type f -name '*fw*.bin' -print -exec cp -v {} artifacts/ \; 2>/dev/null || true
+
+          for f in artifacts/*-AP-fw.bin; do
+            [ -f "$f" ] || continue
+            cp "$f" artifacts/GN866-AC-RTL8198C-fw.bin
+          done
+
+          python3 - <<'PY'
+          from pathlib import Path
+          for p in sorted(Path("artifacts").glob("*.bin")):
+              b = p.read_bytes()
+              print(p.name, len(b), b[:16].hex())
+              if b.startswith(b"cr6c"):
+                  off = b.find(b"r6cr", 16)
+                  print("  CR6C header: yes, r6cr:", hex(off) if off >= 0 else "missing")
+                  if off >= 0 and off + 16 <= len(b):
+                      import struct
+                      stored = struct.unpack(">I", b[off+12:off+16])[0]
+                      actual = len(b) - (off + 16)
+                      print("  r6cr.length =", hex(stored), "actual =", hex(actual))
+                      print("  length_ok =", stored == actual)
+                  break
+          PY
+
+          {
+            echo "GN866 AC build from aborgda/openwrt-rtk819 old RTL8198C SDK"
+            echo "SoC: RTL8198C"
+            echo "Wireless: RTL8192EE + RTL8812"
+            echo "Image profile: native AP"
+            echo "GPIO: not modified because GN866 GPIO values were not confirmed from the dump"
+            echo "uClibc: 0.9.33.2"
+            echo "GCC: 4.8 Linaro"
+          } > artifacts/README-GN866.txt
+
+          sha256sum artifacts/*.bin > artifacts/sha256sums.txt 2>/dev/null || true
+          cp .config artifacts/config.buildinfo
+          cp build.log artifacts/build.log
+
+          if find artifacts -maxdepth 1 -type f -name '*.bin' | grep -q .; then
+            echo 'BUILD_RESULT=HAS_OUTPUT' > artifacts/BUILD-STATUS.txt
+          else
+            echo 'BUILD_RESULT=NO_OUTPUT' > artifacts/BUILD-STATUS.txt
+          fi
+          ls -lh artifacts
+
+      - name: Upload GN866 firmware
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: GN866-AC-RTK8198C-SDK
+          path: artifacts/
+          if-no-files-found: warn
