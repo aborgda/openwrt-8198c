@@ -73,9 +73,9 @@ jobs:
             "$KCFG"
 
           echo '--- target ---'
-          grep -E 'CONFIG_TARGET_rtkmips|CONFIG_CPU_TYPE|CONFIG_GCC_VERSION|CONFIG_UCLIBC_VERSION' .config
+          grep -E 'CONFIG_TARGET_rtkmips|CONFIG_CPU_TYPE|CONFIG_GCC_VERSION|CONFIG_UCLIBC_VERSION' .config || true
           echo '--- GN866 kernel wireless ---'
-          grep -E 'CONFIG_SLOT_[01]_(8192EE|8812|8814AE)|CONFIG_WLAN_HAL' "$KCFG"
+          grep -E 'CONFIG_SLOT_[01]_(8192EE|8812|8814AE)|CONFIG_WLAN_HAL' "$KCFG" || true
 
       - name: Build RTL8198C image
         shell: bash
