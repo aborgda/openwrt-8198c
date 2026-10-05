@@ -67,7 +67,7 @@ endef
 
 define Build/realtek-cr6c
 	$(STAGING_DIR_HOST)/bin/python3 $(TOPDIR)/scripts/realtek-cr6c.py \
-		$@.new "$(word 1,$^)" "$(word 2,$^)" \
+		$@.new "$(KDIR_KERNEL_IMAGE)" "$(KDIR)/root.squashfs" \
 		--kernel-ram 0x80000000 \
 		--kernel-flash 0x00030000 \
 		--rootfs-flash 0x00260000
