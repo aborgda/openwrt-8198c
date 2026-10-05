@@ -51,6 +51,7 @@ jobs:
         shell: bash
         run: |
           set -e
+          # Top-level OpenWrt target selection.
           cp rtk_deconfig/defconfig_rtl8198c .config
           sed -i \
             -e 's/^CONFIG_GCC_VERSION_4_6_LINARO=y/# CONFIG_GCC_VERSION_4_6_LINARO is not set/' \
@@ -58,22 +59,23 @@ jobs:
             -e 's/^CONFIG_GCC_VERSION="4.6-linaro"/CONFIG_GCC_VERSION="4.8-linaro"/' \
             -e 's/^CONFIG_GDB=y/# CONFIG_GDB is not set/' \
             .config
-          cat >> .config <<'EOF'
-          CONFIG_GCC_VERSION_4_8_LINARO=y
-          CONFIG_GCC_VERSION_4_8=y
-          CONFIG_SLOT_0_8192EE=y
-          # CONFIG_SLOT_0_8194AE is not set
-          CONFIG_SLOT_1_8812=y
-          # CONFIG_SLOT_1_8814AE is not set
-          CONFIG_USE_PCIE_SLOT_0=y
-          CONFIG_USE_PCIE_SLOT_1=y
-          CONFIG_WLAN_HAL=y
-          CONFIG_WLAN_HAL_88XX=y
-          # CONFIG_WLAN_HAL_8814AE is not set
-          EOF
           make defconfig
+
+          # GN866 AC vendor wireless: patch the RTL8198C kernel config,
+          # not the top-level OpenWrt config.
+          KCFG=target/linux/rtkmips/rtl8198c/config-3.10
+          sed -i \
+            -e 's/^# CONFIG_SLOT_0_8192EE is not set/CONFIG_SLOT_0_8192EE=y/' \
+            -e 's/^CONFIG_SLOT_0_8194AE=y/# CONFIG_SLOT_0_8194AE is not set/' \
+            -e 's/^CONFIG_SLOT_1_8814AE=y/# CONFIG_SLOT_1_8814AE is not set/' \
+            -e 's/^# CONFIG_SLOT_1_8812 is not set/CONFIG_SLOT_1_8812=y/' \
+            -e 's/^CONFIG_WLAN_HAL_8814AE=y/# CONFIG_WLAN_HAL_8814AE is not set/' \
+            "$KCFG"
+
+          echo '--- target ---'
           grep -E 'CONFIG_TARGET_rtkmips|CONFIG_CPU_TYPE|CONFIG_GCC_VERSION|CONFIG_UCLIBC_VERSION' .config
-          grep -E 'CONFIG_SLOT_[01]_(8192EE|8812|8814AE)|CONFIG_WLAN_HAL' .config
+          echo '--- GN866 kernel wireless ---'
+          grep -E 'CONFIG_SLOT_[01]_(8192EE|8812|8814AE)|CONFIG_WLAN_HAL' "$KCFG"
 
       - name: Build RTL8198C image
         shell: bash
@@ -95,6 +97,7 @@ jobs:
             [ -f "$f" ] || continue
             cp "$f" artifacts/GN866-AC-RTL8198C-fw.bin
           done
+
           python3 - <<'PY'
           from pathlib import Path
           import struct
@@ -110,6 +113,7 @@ jobs:
                       print("r6cr.length", hex(stored), "actual", hex(actual), "ok", stored == actual)
                   break
           PY
+
           {
             echo "GN866 AC build from aborgda/openwrt-rtk819 old RTL8198C SDK"
             echo "SoC: RTL8198C"
@@ -117,9 +121,11 @@ jobs:
             echo "Image profile: native AP"
             echo "GPIO: not modified; GN866 GPIO values not confirmed"
           } > artifacts/README-GN866.txt
+
           sha256sum artifacts/*.bin > artifacts/sha256sums.txt 2>/dev/null || true
           cp .config artifacts/config.buildinfo
-          cp build.log artifacts/build.log
+          cp target/linux/rtkmips/rtl8198c/config-3.10 artifacts/rtl8198c-config-3.10
+          cp build.log artifacts/build.log 2>/dev/null || true
           if find artifacts -maxdepth 1 -type f -name '*.bin' | grep -q .; then
             echo 'BUILD_RESULT=HAS_OUTPUT' > artifacts/BUILD-STATUS.txt
           else
