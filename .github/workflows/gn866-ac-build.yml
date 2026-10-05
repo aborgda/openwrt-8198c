@@ -71,6 +71,21 @@ jobs:
             --rootfs-flash 0x00260000 \
             --kernel-span 0x00230000
 
+      - name: Create GN866 CR6C factory image
+        shell: bash
+        run: |
+          set -e
+          OUT="bin/targets/realtek/rtl8198c/gn866_ac-cr6c-factory.bin"
+          KERNEL="$(find bin/targets/realtek/rtl8198c -maxdepth 1 -type f -name '*gn866_ac*kernel.bin' -print -quit)"
+          ROOTFS="$(find bin/targets/realtek/rtl8198c -maxdepth 1 -type f -name '*gn866_ac*rootfs.squashfs' -print -quit)"
+          if [ -z "$ROOTFS" ]; then
+            ROOTFS="$(find bin/targets/realtek/rtl8198c -maxdepth 1 -type f -name '*rootfs.squashfs' -print -quit)"
+          fi
+          test -n "$KERNEL"
+          test -n "$ROOTFS"
+          python3 scripts/realtek-cr6c.py "$OUT" "$KERNEL" "$ROOTFS"             --kernel-ram 0x80000000             --kernel-flash 0x00030000             --rootfs-flash 0x00260000
+          ls -lh "$KERNEL" "$ROOTFS" "$OUT"
+
       - name: Verify GN866 CR6C image
         shell: bash
         run: |
