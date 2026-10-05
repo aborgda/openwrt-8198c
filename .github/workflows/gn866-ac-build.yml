@@ -9,6 +9,7 @@ on:
       - 'package/**'
       - 'Makefile'
       - 'include/**'
+      - 'include/image-commands.mk'
       - 'scripts/realtek-cr6c.py'
   workflow_dispatch:
 
