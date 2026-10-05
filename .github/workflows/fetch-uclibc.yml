@@ -1,0 +1,23 @@
+name: Fetch uClibc 0.9.33.2 source
+on:
+  push:
+    branches:
+      - fetch-uclibc-09332
+jobs:
+  fetch:
+    runs-on: ubuntu-22.04
+    container:
+      image: ubuntu:20.04
+    steps:
+      - name: Download
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends wget ca-certificates
+          mkdir -p artifacts
+          wget -O artifacts/uClibc-0.9.33.2.tar.bz2 https://mirror2.openwrt.org/sources/uClibc-0.9.33.2.tar.bz2
+          sha256sum artifacts/uClibc-0.9.33.2.tar.bz2
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: uclibc-0.9.33.2
+          path: artifacts/uClibc-0.9.33.2.tar.bz2
