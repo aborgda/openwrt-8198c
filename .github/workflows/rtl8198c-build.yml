@@ -46,6 +46,13 @@ jobs:
       - name: Build target toolchain
         run: |
           make -j2 V=s toolchain/install
+      - name: Prepare kernel config non-interactively
+        run: |
+          make -j2 V=s target/linux/prepare
+          KERNEL_DIR="$(find build_dir/target-* -maxdepth 1 -type d -name 'linux-6.6.*' -print -quit)"
+          test -n "$KERNEL_DIR"
+          echo "Normalizing kernel Kconfig in $KERNEL_DIR"
+          make -C "$KERNEL_DIR" ARCH=mips olddefconfig
       - name: Compile RTL8198C Linux target
         run: |
           make -j2 V=s target/linux/compile
