@@ -1,0 +1,16 @@
+RTL8198C / GN866 AC — experimental OpenWrt 24.10 port
+=====================================================
+
+This directory is an initial target-registration scaffold only.
+
+Known blockers before a bootable image can be claimed:
+- Linux 6.6 needs verified RTL8198C/Lexra CPU, interrupt-controller, timer,
+  UART, memory-controller and SoC support.
+- The GN866 AC DTS must be validated against the board's real memory map and
+  peripherals; placeholder register addresses must not be treated as verified.
+- The board's SPI flash partition map and vendor firmware header/checksum
+  format must be confirmed before defining a factory image.
+- The legacy rt-loader board source is not yet integrated into the image build.
+
+Do not flash generated experimental images to hardware until these items are
+implemented and verified.
