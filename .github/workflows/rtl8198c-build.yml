@@ -40,6 +40,9 @@ jobs:
           CONFIG_TARGET_SUBTARGET="rtl8198c"
           EOF
           make defconfig
+      - name: Build target toolchain
+        run: |
+          make -j2 V=s toolchain/install
       - name: Compile RTL8198C Linux target
         run: |
           make -j2 V=s target/linux/compile
