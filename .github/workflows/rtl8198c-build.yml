@@ -33,6 +33,12 @@ jobs:
           test -f target/linux/realtek/image/rtl8198c.mk
       - name: Configure OpenWrt
         run: |
+          cat > .config <<'EOF'
+          CONFIG_TARGET_realtek=y
+          CONFIG_TARGET_realtek_rtl8198c=y
+          CONFIG_TARGET_BOARD="realtek"
+          CONFIG_TARGET_SUBTARGET="rtl8198c"
+          EOF
           make defconfig
       - name: Compile RTL8198C Linux target
         run: |
