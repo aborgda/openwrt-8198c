@@ -9,10 +9,10 @@ DEVICE_TYPE:=basic
 FEATURES:=ramdisk squashfs
 SUBTARGETS:=rtl838x rtl839x rtl930x rtl931x rtl8198c
 
-KERNEL_PATCHVER:=5.10
+KERNEL_PATCHVER:=6.6
 
 define Target/Description
-	Build firmware images for Realtek RTL83xx based boards.
+	Build firmware images for Realtek RTL83xx and RTL8198C based boards.
 endef
 
 include $(INCLUDE_DIR)/target.mk
