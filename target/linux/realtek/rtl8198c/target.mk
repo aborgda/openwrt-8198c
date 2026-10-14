@@ -1,9 +1,11 @@
 # SPDX-License-Identifier: GPL-2.0-only
 #
-# Experimental target scaffold for Realtek RTL8198C / GN866 AC.
-# This does not imply Linux 6.6 has complete RTL8198C SoC support.
+# Experimental RTL8198C / GN866 AC target scaffold.
+# CPU type follows the MIPS 4KEc toolchain used by this OpenWrt target.
 #
+ARCH:=mips
 SUBTARGET:=rtl8198c
 BOARDNAME:=RTL8198C (experimental)
+CPU_TYPE:=4kec
 SOC:=rtl8198c
 FEATURES+=usb
