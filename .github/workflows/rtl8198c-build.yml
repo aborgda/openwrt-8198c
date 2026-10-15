@@ -61,4 +61,6 @@ jobs:
           test -n "$KERNEL_DIR"
           yes '' | make -C "$KERNEL_DIR" ARCH=mips oldconfig
           make -C "$KERNEL_DIR" ARCH=mips olddefconfig
+          # Kconfig may be re-entered by OpenWrt's kernel compile sub-make.
+          # Feed default answers to that nested invocation as well.
           yes '' | make -j2 V=s target/linux/compile
