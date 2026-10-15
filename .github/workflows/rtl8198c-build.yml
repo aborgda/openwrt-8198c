@@ -1,4 +1,5 @@
 name: RTL8198C GN866 AC build attempt
+# Keep kernel Kconfig resolution non-interactive in CI.
 
 on:
   push:
