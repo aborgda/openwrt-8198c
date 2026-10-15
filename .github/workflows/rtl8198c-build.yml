@@ -52,7 +52,12 @@ jobs:
           KERNEL_DIR="$(find build_dir/target-* -maxdepth 1 -type d -name 'linux-6.6.*' -print -quit)"
           test -n "$KERNEL_DIR"
           echo "Normalizing kernel Kconfig in $KERNEL_DIR"
+          yes '' | make -C "$KERNEL_DIR" ARCH=mips oldconfig
           make -C "$KERNEL_DIR" ARCH=mips olddefconfig
       - name: Compile RTL8198C Linux target
         run: |
-          make -j2 V=s target/linux/compile
+          KERNEL_DIR="$(find build_dir/target-* -maxdepth 1 -type d -name 'linux-6.6.*' -print -quit)"
+          test -n "$KERNEL_DIR"
+          yes '' | make -C "$KERNEL_DIR" ARCH=mips oldconfig
+          make -C "$KERNEL_DIR" ARCH=mips olddefconfig
+          yes '' | make -j2 V=s target/linux/compile
