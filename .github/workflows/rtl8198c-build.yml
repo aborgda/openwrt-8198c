@@ -48,19 +48,32 @@ jobs:
         run: |
           make -j2 V=s toolchain/install
       - name: Prepare kernel config non-interactively
+        env:
+          KCONFIG_NOSILENTUPDATE: "1"
         run: |
           make -j2 V=s target/linux/prepare
-          KERNEL_DIR="$(find build_dir/target-* -maxdepth 1 -type d -name 'linux-6.6.*' -print -quit)"
+          KERNEL_DIR="$(find build_dir/target-* -type d -name 'linux-6.6.*' -print -quit)"
           test -n "$KERNEL_DIR"
           echo "Normalizing kernel Kconfig in $KERNEL_DIR"
           yes '' | make -C "$KERNEL_DIR" ARCH=mips oldconfig
           make -C "$KERNEL_DIR" ARCH=mips olddefconfig
+          test -s "$KERNEL_DIR/.config"
       - name: Compile RTL8198C Linux target
+        env:
+          KCONFIG_NOSILENTUPDATE: "1"
         run: |
-          KERNEL_DIR="$(find build_dir/target-* -maxdepth 1 -type d -name 'linux-6.6.*' -print -quit)"
+          KERNEL_DIR="$(find build_dir/target-* -type d -name 'linux-6.6.*' -print -quit)"
           test -n "$KERNEL_DIR"
           yes '' | make -C "$KERNEL_DIR" ARCH=mips oldconfig
           make -C "$KERNEL_DIR" ARCH=mips olddefconfig
-          # Kconfig may be re-entered by OpenWrt's kernel compile sub-make.
-          # Feed default answers to that nested invocation as well.
-          yes '' | make -j2 V=s target/linux/compile
+          make -j2 V=s target/linux/compile
+      - name: Upload build outputs if present
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rtl8198c-gn866-build-output
+          path: |
+            bin/targets/realtek/rtl8198c/**
+            build_dir/target-*/linux-realtek_rtl8198c/linux-6.6.*/vmlinux
+            build_dir/target-*/linux-realtek_rtl8198c/linux-6.6.*/arch/mips/boot/compressed/vmlinuz
+          if-no-files-found: warn
