@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
+#include "rtl8198c.dtsi"
+/ {
+	compatible = "sk337,router", "realtek,rtl8198c-soc";
+	model = "SK337";
+	/* 128 MiB is a provisional value; confirm against the board before flashing. */
+	memory@0 { device_type = "memory"; reg = <0x0 0x8000000>; };
+};
