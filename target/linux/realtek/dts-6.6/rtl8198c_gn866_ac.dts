@@ -1,0 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
+#include "rtl8198c.dtsi"
+/ {
+	compatible = "gn866,ac", "realtek,rtl8198c-soc";
+	model = "GN866 AC";
+	memory@0 { device_type = "memory"; reg = <0x0 0x8000000>; };
+};
