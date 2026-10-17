@@ -48,26 +48,19 @@ jobs:
         run: |
           make -j2 V=s toolchain/install
       - name: Prepare kernel config non-interactively
-        env:
-          KCONFIG_NOSILENTUPDATE: "1"
         run: |
           make -j2 V=s target/linux/prepare
           KERNEL_DIR="$(find build_dir/target-* -type d -name 'linux-6.6.*' -print -quit)"
           test -n "$KERNEL_DIR"
           echo "Normalizing kernel Kconfig in $KERNEL_DIR"
-          yes '' | make -C "$KERNEL_DIR" ARCH=mips oldconfig
           make -C "$KERNEL_DIR" ARCH=mips olddefconfig
           test -s "$KERNEL_DIR/.config"
       - name: Compile RTL8198C Linux target
-        env:
-          KCONFIG_NOSILENTUPDATE: "1"
         run: |
           KERNEL_DIR="$(find build_dir/target-* -type d -name 'linux-6.6.*' -print -quit)"
           test -n "$KERNEL_DIR"
-          yes '' | make -C "$KERNEL_DIR" ARCH=mips oldconfig
           make -C "$KERNEL_DIR" ARCH=mips olddefconfig
-          set -o pipefail
-          yes "" | make -j2 V=s target/linux/compile
+          make -j2 V=s target/linux/compile
       - name: Upload build outputs if present
         if: always()
         uses: actions/upload-artifact@v4
