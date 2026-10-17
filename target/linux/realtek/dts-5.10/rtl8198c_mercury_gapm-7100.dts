@@ -4,7 +4,7 @@
 
 / {
 	compatible = "mercury,gapm-7100", "realtek,rtl8198c-soc";
-	model = "F-Secure Sense";
+	model = "Mercury GAPM-7100";
 
 	memory@0 {
 		device_type = "memory";
