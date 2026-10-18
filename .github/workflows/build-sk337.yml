@@ -41,10 +41,9 @@ jobs:
           CONFIG_TARGET_realtek=y
           CONFIG_TARGET_realtek_rtl8198c=y
           CONFIG_TARGET_DEVICE_realtek_rtl8198c_DEVICE_sk337=y
-          CONFIG_PACKAGE_luci=y
           EOF
           make defconfig
-          grep -E 'CONFIG_TARGET_realtek(_rtl8198c)?=y|CONFIG_TARGET_DEVICE_realtek_rtl8198c_DEVICE_sk337=y|CONFIG_PACKAGE_luci=y' .config
+          grep -E 'CONFIG_TARGET_realtek(_rtl8198c)?=y|CONFIG_TARGET_DEVICE_realtek_rtl8198c_DEVICE_sk337=y' .config
 
       - name: Build firmware
         run: make -j"$(nproc)" V=s
