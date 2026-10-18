@@ -4,7 +4,7 @@
 
 / {
 	compatible = "realtek,sk337", "realtek,rtl8198c-soc";
-	model = "SK337";
+	model = "sk337";
 
 	memory@0 {
 		device_type = "memory";
