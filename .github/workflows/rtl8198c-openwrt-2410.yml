@@ -43,8 +43,8 @@ jobs:
           cp overlay/target/linux/realtek/dts-5.10/rtl8198c_gn866_ac.dts openwrt/target/linux/realtek/dts-6.6/
           cp overlay/target/linux/realtek/dts-5.10/rtl8198c_lg7100.dts openwrt/target/linux/realtek/dts-6.6/
           cp overlay/target/linux/realtek/dts-5.10/rtl8198c_sk337.dts openwrt/target/linux/realtek/dts-6.6/
-          cp overlay/target/linux/realtek/rtl8198c/config-5.10 openwrt/target/linux/realtek/rtl8198c/config-6.6
           mkdir -p openwrt/target/linux/realtek/rtl8198c
+          cp overlay/target/linux/realtek/rtl8198c/config-5.10 openwrt/target/linux/realtek/rtl8198c/config-6.6
           cp overlay/target/linux/realtek/rtl8198c/target.mk openwrt/target/linux/realtek/rtl8198c/target.mk
           sed -i 's/KERNEL_PATCHVER:=5\.10/KERNEL_PATCHVER:=6.6/' openwrt/target/linux/realtek/rtl8198c/target.mk
           mkdir -p openwrt/target/linux/realtek/image/lzma-loader
@@ -67,7 +67,7 @@ jobs:
               anchor = "include $(SUBTARGET).mk"
               if anchor not in s:
                   raise SystemExit("Cannot find image subtarget include anchor")
-              defs = r"""
+              defs = """
           define Build/realtek-cr6c
           	$(STAGING_DIR_HOST)/bin/python3 $(TOPDIR)/scripts/realtek-cr6c.py \
           		$@.new "$(KDIR_KERNEL_IMAGE)" "$(KDIR)/root.squashfs" \
