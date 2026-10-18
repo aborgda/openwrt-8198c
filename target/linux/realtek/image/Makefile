@@ -10,6 +10,14 @@ DEVICE_VARS += ZYXEL_VERS DLINK_KERNEL_PART_SIZE
 DEVICE_VARS += CAMEO_KERNEL_PART CAMEO_ROOTFS_PART CAMEO_CUSTOMER_SIGNATURE CAMEO_BOARD_VERSION
 DEVICE_VARS += H3C_PRODUCT_ID H3C_DEVICE_ID
 
+# The bundled LZMA 4.65 encoder does not accept the newer -9/-e
+# switches used by the generic image recipe. Keep the same LZMA1
+# parameters while using the switches supported by this encoder.
+define Build/lzma
+	$(STAGING_DIR_HOST)/bin/lzma e $@ $@.new -a1 -lc1 -lp2 -pb2 $(1)
+	mv $@.new $@
+endef
+
 define Build/zyxel-vers
        ( echo VERS;\
        for hw in $(ZYXEL_VERS); do\
