@@ -35,7 +35,7 @@ TARGET_DEVICES += lg7100
 define Device/sk337
   $(Device/rtl8198c_common)
   DEVICE_VENDOR := Realtek
-  DEVICE_MODEL := SK337
+  DEVICE_MODEL := sk337
 endef
 TARGET_DEVICES += sk337
 
