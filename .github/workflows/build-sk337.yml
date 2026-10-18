@@ -1,0 +1,63 @@
+name: Build RTL8198C SK337 firmware
+
+on:
+  push:
+    branches: [build-sk337-custom-defaults]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 360
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            build-essential clang flex bison g++ gawk gcc-multilib g++-multilib \
+            gettext git libncurses-dev libssl-dev python3 python3-distutils \
+            rsync unzip zlib1g-dev file wget curl time perl libelf-dev
+
+      - name: Prepare feeds
+        run: |
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Apply SK337 defaults
+        run: |
+          mkdir -p files/etc/uci-defaults
+          cp .github/firmwarelab/99-sk337-defaults files/etc/uci-defaults/99-sk337-defaults
+          chmod 0755 files/etc/uci-defaults/99-sk337-defaults
+
+      - name: Configure RTL8198C SK337 target
+        run: |
+          cat > .config <<'EOF'
+          CONFIG_TARGET_realtek=y
+          CONFIG_TARGET_realtek_rtl8198c=y
+          CONFIG_TARGET_DEVICE_realtek_rtl8198c_DEVICE_sk337=y
+          CONFIG_PACKAGE_luci=y
+          EOF
+          make defconfig
+          grep -E 'CONFIG_TARGET_realtek(_rtl8198c)?=y|CONFIG_TARGET_DEVICE_realtek_rtl8198c_DEVICE_sk337=y|CONFIG_PACKAGE_luci=y' .config
+
+      - name: Build firmware
+        run: make -j"$(nproc)" V=s
+
+      - name: Verify output files
+        run: |
+          find bin/targets/realtek/rtl8198c -maxdepth 2 -type f -printf '%p %s bytes\n'
+          test -n "$(find bin/targets/realtek/rtl8198c -type f \( -name '*.bin' -o -name '*.img' \) -print -quit)"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rtl8198c-sk337-firmware-test-build
+          path: bin/targets/realtek/rtl8198c/
+          if-no-files-found: error
+          retention-days: 14
