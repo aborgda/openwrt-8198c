@@ -19,6 +19,10 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        device: [gn866_ac, lg7100, sk337]
     steps:
       - name: Checkout RTL8198C board-support overlay
         uses: actions/checkout@v4
@@ -108,7 +112,7 @@ jobs:
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
-      - name: Configure RTL8198C devices
+      - name: Configure RTL8198C device
         working-directory: openwrt
         shell: bash
         run: |
@@ -116,28 +120,29 @@ jobs:
           cat > .config <<'EOF'
           CONFIG_TARGET_realtek=y
           CONFIG_TARGET_realtek_rtl8198c=y
-          CONFIG_TARGET_SUBTARGET="rtl8198c"
-          CONFIG_TARGET_PROFILE="DEVICE_gn866_ac"
+          CONFIG_TARGET_DEVICE_realtek_rtl8198c_DEVICE_${{ matrix.device }}=y
           CONFIG_TARGET_ROOTFS_SQUASHFS=y
-          CONFIG_TARGET_ROOTFS_TARGZ=y
-          CONFIG_PACKAGE_luci=y
-          CONFIG_PACKAGE_luci-ssl=y
+          CONFIG_DEVEL=y
           EOF
           make defconfig
-          grep -E 'CONFIG_TARGET_realtek(_rtl8198c)?=y|CONFIG_TARGET_PROFILE=' .config
+          grep -E '^(CONFIG_TARGET_realtek|CONFIG_TARGET_DEVICE_realtek_rtl8198c_DEVICE_)' .config
 
       - name: Build firmware
         working-directory: openwrt
-        run: make -j2 V=s
+        shell: bash
+        run: |
+          set -o pipefail
+          make -j2 V=s 2>&1 | tee build.log
 
       - name: Upload firmware and logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: rtl8198c-openwrt-24.10-build
+          name: rtl8198c-openwrt-24.10-${{ matrix.device }}-build
           path: |
             openwrt/bin/targets/realtek/rtl8198c/
             openwrt/.config
             openwrt/logs/
+            openwrt/build.log
           if-no-files-found: warn
           retention-days: 14
