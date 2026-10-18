@@ -1,0 +1,143 @@
+name: OpenWrt 24.10 RTL8198C build
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'target/linux/realtek/**'
+      - 'scripts/realtek-cr6c.py'
+      - '.github/workflows/rtl8198c-openwrt-2410.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rtl8198c-openwrt-2410-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 360
+    steps:
+      - name: Checkout RTL8198C board-support overlay
+        uses: actions/checkout@v4
+        with:
+          path: overlay
+
+      - name: Checkout official OpenWrt 24.10
+        uses: actions/checkout@v4
+        with:
+          repository: openwrt/openwrt
+          ref: openwrt-24.10
+          path: openwrt
+          submodules: true
+
+      - name: Apply RTL8198C board support to OpenWrt 24.10
+        shell: bash
+        run: |
+          set -euxo pipefail
+          test -f openwrt/include/kernel-6.6
+          mkdir -p openwrt/target/linux/realtek/dts-6.6
+          cp overlay/target/linux/realtek/dts-5.10/rtl8198c.dtsi openwrt/target/linux/realtek/dts-6.6/
+          cp overlay/target/linux/realtek/dts-5.10/rtl8198c_gn866_ac.dts openwrt/target/linux/realtek/dts-6.6/
+          cp overlay/target/linux/realtek/dts-5.10/rtl8198c_lg7100.dts openwrt/target/linux/realtek/dts-6.6/
+          cp overlay/target/linux/realtek/dts-5.10/rtl8198c_sk337.dts openwrt/target/linux/realtek/dts-6.6/
+          cp overlay/target/linux/realtek/rtl8198c/config-5.10 openwrt/target/linux/realtek/rtl8198c/config-6.6
+          mkdir -p openwrt/target/linux/realtek/rtl8198c
+          cp overlay/target/linux/realtek/rtl8198c/target.mk openwrt/target/linux/realtek/rtl8198c/target.mk
+          sed -i 's/KERNEL_PATCHVER:=5\.10/KERNEL_PATCHVER:=6.6/' openwrt/target/linux/realtek/rtl8198c/target.mk
+          mkdir -p openwrt/target/linux/realtek/image/lzma-loader
+          cp -a overlay/target/linux/realtek/image/lzma-loader/. openwrt/target/linux/realtek/image/lzma-loader/
+          cp overlay/target/linux/realtek/image/rtl8198c.mk openwrt/target/linux/realtek/image/rtl8198c.mk
+          cp overlay/scripts/realtek-cr6c.py openwrt/scripts/realtek-cr6c.py
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("openwrt/target/linux/realtek/Makefile")
+          s = p.read_text()
+          line = next((x for x in s.splitlines() if x.startswith("SUBTARGETS:=")), None)
+          if line is None:
+              raise SystemExit("Cannot locate SUBTARGETS in upstream Realtek target Makefile")
+          if "rtl8198c" not in line.split():
+              s = s.replace(line, line + " rtl8198c", 1)
+          p.write_text(s)
+          p = Path("openwrt/target/linux/realtek/image/Makefile")
+          s = p.read_text()
+          if "define Build/loader-common" not in s:
+              anchor = "include $(SUBTARGET).mk"
+              if anchor not in s:
+                  raise SystemExit("Cannot find image subtarget include anchor")
+              defs = r"""
+          define Build/realtek-cr6c
+          	$(STAGING_DIR_HOST)/bin/python3 $(TOPDIR)/scripts/realtek-cr6c.py \
+          		$@.new "$(KDIR_KERNEL_IMAGE)" "$(KDIR)/root.squashfs" \
+          		--kernel-ram 0x80000000 \
+          		--kernel-flash 0x00030000 \
+          		--rootfs-flash 0x00260000
+          	mv $@.new $@
+          endef
+
+          define Build/loader-common
+          	rm -rf $@.src
+          	$(MAKE) -C lzma-loader PKG_BUILD_DIR="$@.src" TARGET_DIR="$(dir $@)" LOADER_NAME="$(notdir $@)" BOARD="$(BOARDNAME)" PLATFORM="$(LOADER_PLATFORM)" LZMA_TEXT_START=$(LZMA_TEXT_START) LOADADDR=$(LOADADDR) $(1) compile loader.$(LOADER_TYPE)
+          	mv "$@.$(LOADER_TYPE)" "$@"
+          	rm -rf $@.src
+          endef
+
+          define Build/loader-kernel
+          	$(call Build/loader-common,LOADER_DATA="$@")
+          endef
+
+          """
+              s = s.replace(anchor, defs + "\n" + anchor, 1)
+              p.write_text(s)
+          PY
+          grep -q 'rtl8198c' openwrt/target/linux/realtek/Makefile
+          test -f openwrt/target/linux/realtek/image/rtl8198c.mk
+          test -f openwrt/target/linux/realtek/dts-6.6/rtl8198c_gn866_ac.dts
+
+      - name: Install build dependencies
+        working-directory: openwrt
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential clang flex bison g++ gawk gcc-multilib g++-multilib gettext git libncurses-dev libssl-dev python3-distutils rsync unzip zlib1g-dev file wget
+
+      - name: Update feeds
+        working-directory: openwrt
+        run: |
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Configure RTL8198C devices
+        working-directory: openwrt
+        shell: bash
+        run: |
+          set -euxo pipefail
+          cat > .config <<'EOF'
+          CONFIG_TARGET_realtek=y
+          CONFIG_TARGET_realtek_rtl8198c=y
+          CONFIG_TARGET_SUBTARGET="rtl8198c"
+          CONFIG_TARGET_PROFILE="DEVICE_gn866_ac"
+          CONFIG_TARGET_ROOTFS_SQUASHFS=y
+          CONFIG_TARGET_ROOTFS_TARGZ=y
+          CONFIG_PACKAGE_luci=y
+          CONFIG_PACKAGE_luci-ssl=y
+          EOF
+          make defconfig
+          grep -E 'CONFIG_TARGET_realtek(_rtl8198c)?=y|CONFIG_TARGET_PROFILE=' .config
+
+      - name: Build firmware
+        working-directory: openwrt
+        run: make -j2 V=s
+
+      - name: Upload firmware and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rtl8198c-openwrt-24.10-build
+          path: |
+            openwrt/bin/targets/realtek/rtl8198c/
+            openwrt/.config
+            openwrt/logs/
+          if-no-files-found: warn
+          retention-days: 14
