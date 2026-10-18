@@ -56,7 +56,9 @@ jobs:
         run: make download -j$(nproc)
 
       - name: Build firmware
-        run: make -j$(nproc) V=s 2>&1 | tee build.log
+        run: |
+          set -o pipefail
+          make -j$(nproc) V=s 2>&1 | tee build.log
 
       - name: Upload build logs and images
         if: always()
